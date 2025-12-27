@@ -208,9 +208,3 @@ If using SSH URLs, make sure your SSH keys are set up:
 ### Script prompts for sudo password
 If a script calls sudo, it may block waiting for a password.
 Preferred solution is to avoid sudo in scripts, or whitelist specific commands using sudoers with NOPASSWD for only those commands.
-
----
-
-## License
-
-Add a license if you plan to share this project publicly.
