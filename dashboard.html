@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pi Script Dashboard</title>
+
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#101821; --border:#223244; --muted:#aab6c3; --text:#e8eef5;
+      --chip:#0f1722; --btn:#162234; --btnHover:#1b2a40;
+      --term:#04070b; --termText:#d7ffd7; --radius:14px;
+      --inputBg:#0f1722;
+    }
+    [data-theme="light"]{
+      --bg:#ffffff; --card:#ffffff; --border:#e6e6e6; --muted:#666; --text:#111;
+      --chip:#fbfbfb; --btn:#fafafa; --btnHover:#f0f0f0; --term:#0b0b0b; --termText:#d7ffd7;
+      --inputBg:#ffffff;
+    }
+
+    /* Fix overhanging inputs */
+    *, *::before, *::after { box-sizing: border-box; }
+    .card { min-width: 0; }
+    .grid > .card { min-width: 0; }
+
+    body{
+      margin:16px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,system-ui,sans-serif;
+      color:var(--text);
+      background:var(--bg);
+    }
+    h2{ margin:0 0 6px 0; }
+    .small{ color:var(--muted); font-size:13px; margin:0 0 14px 0; }
+    code{ background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:8px; }
+    [data-theme="light"] code{ background:#f6f6f6; }
+
+    .layout{ display:grid; grid-template-columns:1fr; gap:14px; max-width:1200px; }
+    @media (min-width:900px){ .layout{ grid-template-columns:1fr 1.2fr; align-items:start; } }
+
+    .grid{ display:grid; grid-template-columns:1fr; gap:12px; }
+    @media (min-width:560px){ .grid{ grid-template-columns:1fr 1fr; } }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:12px;
+      box-shadow:0 1px 0 rgba(0,0,0,0.15);
+    }
+
+    .scriptTitle{ font-weight:800; margin-bottom:4px; }
+    .scriptDesc{ color:var(--muted); font-size:13px; margin-bottom:10px; }
+
+    button, input, select{
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--btn);
+      color:var(--text);
+      font-weight:700;
+      font-size:14px;
+    }
+    button:hover{ background:var(--btnHover); cursor:pointer; }
+    button:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    input, select{
+      width:100%;
+      max-width:100%;
+      display:block;
+      background:var(--inputBg);
+      font-weight:650;
+      padding:12px;
+    }
+
+    .btnRow{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:14px; }
+    progress{ width:100%; height:18px; margin:10px 0; }
+
+    pre{
+      background:var(--term);
+      color:var(--termText);
+      padding:12px;
+      border-radius:var(--radius);
+      overflow:auto;
+      max-height:42vh;
+      margin:0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size:13px;
+      line-height:1.35;
+      border: 1px solid rgba(255,255,255,0.08);
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    [data-theme="light"] pre{ border:1px solid rgba(0,0,0,0.08); }
+
+    .pill{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      font-size:12px;
+      color:var(--muted);
+      background:var(--chip);
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:10px;
+      flex-wrap:wrap;
+      max-width:1200px;
+    }
+    .split{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    label{ color:var(--muted); font-size:13px; font-weight:800; display:block; margin-bottom:6px; }
+
+    .selected{
+      border-color:#3a5575;
+      box-shadow:0 0 0 2px rgba(90,140,200,0.15);
+    }
+    [data-theme="light"] .selected{
+      border-color:#9bb8d8;
+      box-shadow:0 0 0 2px rgba(60,120,190,0.15);
+    }
+
+    .sectionTitle{ font-weight:900; margin-bottom:8px; }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div>
+      <h2>Pi Script Dashboard</h2>
+      <p class="small">Top-level scripts: <code>~/pi-dashboard/scripts</code> • Repos: <code>~/pi-dashboard/repos</code></p>
+    </div>
+    <div class="split">
+      <span class="pill">LAN only</span>
+      <button id="themeBtn" onclick="toggleTheme()">🌙 Dark</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Left: Scripts + Repos -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <div style="font-weight:900;">Workspace</div>
+        <button onclick="resetUI()">Reset</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="sectionTitle">Top-level scripts</div>
+        <div class="small">Upload your own <code>.py</code> / <code>.sh</code> here.</div>
+
+        <div class="btnRow" style="margin:10px 0;">
+          <input type="file" id="uploadInput" accept=".py,.sh" />
+          <button onclick="uploadScript()">Upload</button>
+        </div>
+
+        <div class="grid" id="scriptGrid"></div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border); margin:14px 0;">
+
+      <div>
+        <div class="sectionTitle">Git repos</div>
+        <div class="small">Paste a Git URL → clones into its own folder.</div>
+
+        <div class="btnRow" style="margin:10px 0;">
+          <input id="gitUrl" placeholder="https://github.com/user/repo.git or git@github.com:user/repo.git" />
+          <button onclick="cloneRepo()">Clone</button>
+        </div>
+
+        <div class="btnRow" style="margin:8px 0;">
+          <select id="repoSelect" onchange="selectRepo()">
+            <option value="">Select a repo…</option>
+          </select>
+          <button onclick="pullRepo()">Pull</button>
+          <button onclick="deleteRepo()">Delete repo</button>
+        </div>
+
+        <div class="small" id="repoStatus" style="margin:6px 0 10px 0;"></div>
+
+        <div class="grid" id="repoFilesGrid"></div>
+      </div>
+    </div>
+
+    <!-- Right: Output + Inputs -->
+    <div class="card">
+      <div style="font-weight:900; margin-bottom:10px;">Run Output</div>
+
+      <div class="row"><b>Selected:</b> <span id="selectedLabel">none</span></div>
+      <div class="row"><b>Job:</b> <span id="jobId">none</span></div>
+      <div class="row"><b>Status:</b> <span id="status">idle</span></div>
+      <div class="row"><b>Step:</b> <span id="step">-</span></div>
+
+      <progress id="bar" value="0" max="100"></progress>
+
+      <div style="margin: 10px 0 12px 0;">
+        <div class="row" style="justify-content:space-between;">
+          <label style="margin:0;">Inputs (auto-detected for Python)</label>
+          <span class="pill" id="inputHint">Select something</span>
+        </div>
+        <div id="inputFields"></div>
+        <div class="small" style="margin-top:8px;">
+          Sent as stdin lines in order (one per <code>input()</code>).
+        </div>
+      </div>
+
+      <div class="btnRow" style="margin-bottom:10px;">
+        <button id="runBtn" onclick="runSelected()" disabled>Run</button>
+        <button onclick="clearLog()">Clear log</button>
+        <button onclick="whereLog()">Log file path</button>
+        <button id="scrollBtn" onclick="toggleAutoscroll()">Autoscroll: ON</button>
+
+        <div class="split">
+          <label for="maxLines" style="margin:0;">Max lines:</label>
+          <input id="maxLines" type="number" min="50" max="5000" value="400" style="width:90px;" />
+        </div>
+      </div>
+
+      <pre id="log"></pre>
+
+      <div class="small" style="margin-top:10px;">
+        UI shows last <b>N</b> lines. Full logs: <code>~/pi-dashboard/logs</code>.
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Theme (default dark)
+  const THEME_KEY = "piDashTheme";
+  function applyTheme(theme){
+    document.documentElement.dataset.theme = (theme === "light") ? "light" : "dark";
+    document.getElementById("themeBtn").textContent = (theme === "light") ? "☀️ Light" : "🌙 Dark";
+    localStorage.setItem(THEME_KEY, theme);
+  }
+  function toggleTheme(){
+    const current = localStorage.getItem(THEME_KEY) || "dark";
+    applyTheme(current === "dark" ? "light" : "dark");
+  }
+  applyTheme(localStorage.getItem(THEME_KEY) || "dark");
+
+  // Elements
+  const scriptGrid = document.getElementById("scriptGrid");
+  const repoFilesGrid = document.getElementById("repoFilesGrid");
+  const repoSelect = document.getElementById("repoSelect");
+  const repoStatus = document.getElementById("repoStatus");
+  const gitUrlEl = document.getElementById("gitUrl");
+
+  const selectedLabelEl = document.getElementById("selectedLabel");
+  const jobIdEl = document.getElementById("jobId");
+  const statusEl = document.getElementById("status");
+  const stepEl = document.getElementById("step");
+  const barEl = document.getElementById("bar");
+  const logEl = document.getElementById("log");
+  const maxLinesEl = document.getElementById("maxLines");
+  const inputFieldsEl = document.getElementById("inputFields");
+  const inputHintEl = document.getElementById("inputHint");
+  const runBtn = document.getElementById("runBtn");
+
+  let ws = null;
+  let autoscroll = true;
+  let logLines = [];
+  let currentJobId = null;
+
+  // Selection state:
+  // mode = "script" or "repo"
+  let selectedMode = null;
+  let selectedScript = null;       // filename for top-level script
+  let selectedRepoId = null;       // repo-xxxxxxxx
+  let selectedRepoPath = null;     // relative file path in repo
+  let selectedType = null;         // "py" or "sh"
+  let detectedInputs = [];
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;");
+  }
+
+  function getMaxLines(){
+    const n = parseInt(maxLinesEl.value, 10);
+    if (isNaN(n) || n < 50) return 50;
+    if (n > 5000) return 5000;
+    return n;
+  }
+
+  function redrawLog(){
+    const n = getMaxLines();
+    const slice = logLines.slice(-n);
+    logEl.textContent = slice.join("\n") + (slice.length ? "\n" : "");
+    if (autoscroll) logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function appendLog(line){
+    logLines.push(line);
+    const hardCap = Math.max(getMaxLines() * 2, 200);
+    if (logLines.length > hardCap) logLines = logLines.slice(-hardCap);
+    redrawLog();
+  }
+
+  function clearLog(){ logLines = []; redrawLog(); }
+
+  function toggleAutoscroll(){
+    autoscroll = !autoscroll;
+    document.getElementById("scrollBtn").textContent = `Autoscroll: ${autoscroll ? "ON" : "OFF"}`;
+    if (autoscroll) logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetUI(){
+    if (ws) { ws.close(); ws = null; }
+    currentJobId = null;
+    jobIdEl.textContent = "none";
+    statusEl.textContent = "idle";
+    stepEl.textContent = "-";
+    barEl.value = 0;
+    clearLog();
+  }
+
+  function renderInputs(inputs, type){
+    inputFieldsEl.innerHTML = "";
+    detectedInputs = inputs || [];
+
+    if (!selectedMode){
+      inputHintEl.textContent = "Select something";
+      runBtn.disabled = true;
+      return;
+    }
+
+    if (type !== "py"){
+      inputHintEl.textContent = "No auto-input for .sh (still runs)";
+      runBtn.disabled = false;
+      return;
+    }
+
+    if (!detectedInputs.length){
+      inputHintEl.textContent = "No input() found";
+      runBtn.disabled = false;
+      return;
+    }
+
+    inputHintEl.textContent = `${detectedInputs.length} input(s) found`;
+    runBtn.disabled = false;
+
+    detectedInputs.forEach(item => {
+      const labelText = item.prompt ? item.prompt : `Input #${item.index}`;
+      const wrap = document.createElement("div");
+      wrap.style.marginTop = "10px";
+      wrap.innerHTML = `
+        <label>${escapeHtml(labelText)}</label>
+        <input type="text" data-input-index="${item.index}" placeholder="Type value..." />
+      `;
+      inputFieldsEl.appendChild(wrap);
+    });
+  }
+
+  function collectInputVars(){
+    const boxes = inputFieldsEl.querySelectorAll("input[data-input-index]");
+    return Array.from(boxes).map(b => b.value ?? "");
+  }
+
+  // ------------------------
+  // Top-level scripts
+  // ------------------------
+  function makeScriptCard(name){
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <div class="scriptTitle">${escapeHtml(name)}</div>
+      <div class="scriptDesc">Top-level script</div>
+      <div class="btnRow">
+        <button class="selectBtn">Select</button>
+        <button class="runBtn">Run</button>
+        <button class="delBtn">Delete</button>
+      </div>
+    `;
+
+    div.querySelector(".selectBtn").onclick = async () => {
+      document.querySelectorAll("#scriptGrid .card").forEach(c => c.classList.remove("selected"));
+      div.classList.add("selected");
+      await selectTopScript(name);
+    };
+
+    div.querySelector(".runBtn").onclick = async () => {
+      document.querySelectorAll("#scriptGrid .card").forEach(c => c.classList.remove("selected"));
+      div.classList.add("selected");
+      await selectTopScript(name);
+      await runSelected();
+    };
+
+    div.querySelector(".delBtn").onclick = async () => {
+      await deleteScript(name);
+    };
+
+    return div;
+  }
+
+  async function loadScripts(){
+    const r = await fetch("/scripts");
+    const scripts = await r.json();
+    scriptGrid.innerHTML = "";
+    scripts.forEach(s => scriptGrid.appendChild(makeScriptCard(s)));
+  }
+
+  async function selectTopScript(name){
+    selectedMode = "script";
+    selectedScript = name;
+    selectedRepoId = null;
+    selectedRepoPath = null;
+
+    selectedLabelEl.textContent = name;
+
+    const r = await fetch(`/script_meta/${encodeURIComponent(name)}`);
+    const data = await r.json();
+    if (!r.ok){
+      appendLog("[ERROR] " + (data.error || "Failed to load meta"));
+      selectedType = "py";
+      renderInputs([], "py");
+      return;
+    }
+    selectedType = data.type || "py";
+    renderInputs(data.inputs || [], selectedType);
+  }
+
+  async function uploadScript(){
+    const f = document.getElementById("uploadInput").files[0];
+    if (!f) return alert("Pick a .py or .sh file");
+
+    const fd = new FormData();
+    fd.append("file", f);
+
+    const r = await fetch("/upload_script", { method:"POST", body: fd });
+    const data = await r.json();
+
+    if (!r.ok){
+      alert(data.error || "Upload failed");
+      return;
+    }
+    appendLog("[INFO] Uploaded " + data.script);
+    await loadScripts();
+  }
+
+  async function deleteScript(name){
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
+
+    const r = await fetch(`/delete_script/${encodeURIComponent(name)}`, { method:"DELETE" });
+    const data = await r.json();
+
+    if (!r.ok){
+      alert(data.error || "Delete failed");
+      return;
+    }
+    appendLog("[INFO] Deleted " + name);
+
+    if (selectedMode === "script" && selectedScript === name){
+      selectedMode = null;
+      selectedScript = null;
+      selectedLabelEl.textContent = "none";
+      renderInputs([], "py");
+      runBtn.disabled = true;
+      inputHintEl.textContent = "Select something";
+    }
+
+    await loadScripts();
+  }
+
+  // ------------------------
+  // Repos
+  // ------------------------
+  async function loadRepos(){
+    const r = await fetch("/repos");
+    const repos = await r.json();
+
+    repoSelect.innerHTML = `<option value="">Select a repo…</option>`;
+    repos.forEach(id => {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = id;
+      repoSelect.appendChild(opt);
+    });
+  }
+
+  async function cloneRepo(){
+    const url = (gitUrlEl.value || "").trim();
+    if (!url) return alert("Paste a Git URL");
+
+    repoStatus.textContent = "Cloning…";
+    const r = await fetch("/clone_repo", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ url })
+    });
+    const data = await r.json();
+
+    if (!r.ok){
+      repoStatus.textContent = "Clone failed.";
+      appendLog("[ERROR] Clone failed: " + (data.error || ""));
+      if (data.details) appendLog(data.details);
+      return;
+    }
+
+    repoStatus.textContent = `Cloned as ${data.repo_id}`;
+    appendLog("[INFO] Cloned repo → " + data.repo_id);
+    gitUrlEl.value = "";
+
+    await loadRepos();
+    repoSelect.value = data.repo_id;
+    await selectRepo();
+  }
+
+  async function selectRepo(){
+    const repo_id = repoSelect.value;
+    repoFilesGrid.innerHTML = "";
+    repoStatus.textContent = "";
+
+    if (!repo_id){
+      return;
+    }
+
+    repoStatus.textContent = "Loading repo files…";
+
+    const r = await fetch(`/repo_files/${encodeURIComponent(repo_id)}`);
+    const data = await r.json();
+
+    if (!r.ok){
+      repoStatus.textContent = "Failed to load repo files.";
+      appendLog("[ERROR] " + (data.error || "repo_files failed"));
+      return;
+    }
+
+    repoStatus.textContent = `${data.files.length} runnable file(s)`;
+
+    // Select repo but not a file yet
+    selectedRepoId = repo_id;
+
+    data.files.forEach(path => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <div class="scriptTitle">${escapeHtml(path)}</div>
+        <div class="scriptDesc">Inside ${escapeHtml(repo_id)}</div>
+        <div class="btnRow">
+          <button class="selectBtn">Select</button>
+          <button class="runBtn">Run</button>
+        </div>
+      `;
+
+      div.querySelector(".selectBtn").onclick = async () => {
+        document.querySelectorAll("#repoFilesGrid .card").forEach(c => c.classList.remove("selected"));
+        div.classList.add("selected");
+        await selectRepoFile(repo_id, path);
+      };
+
+      div.querySelector(".runBtn").onclick = async () => {
+        document.querySelectorAll("#repoFilesGrid .card").forEach(c => c.classList.remove("selected"));
+        div.classList.add("selected");
+        await selectRepoFile(repo_id, path);
+        await runSelected();
+      };
+
+      repoFilesGrid.appendChild(div);
+    });
+  }
+
+  async function selectRepoFile(repo_id, path){
+    selectedMode = "repo";
+    selectedRepoId = repo_id;
+    selectedRepoPath = path;
+    selectedScript = null;
+
+    selectedLabelEl.textContent = `${repo_id}:${path}`;
+
+    const r = await fetch(`/repo_meta/${encodeURIComponent(repo_id)}?path=${encodeURIComponent(path)}`);
+    const data = await r.json();
+    if (!r.ok){
+      appendLog("[ERROR] " + (data.error || "Failed to load repo meta"));
+      selectedType = "py";
+      renderInputs([], "py");
+      return;
+    }
+
+    selectedType = data.type || "py";
+    renderInputs(data.inputs || [], selectedType);
+  }
+
+  async function pullRepo(){
+    const repo_id = repoSelect.value;
+    if (!repo_id) return alert("Select a repo first");
+
+    repoStatus.textContent = "Pulling…";
+    const r = await fetch("/pull_repo", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ repo_id })
+    });
+    const data = await r.json();
+
+    if (!r.ok){
+      repoStatus.textContent = "Pull failed.";
+      appendLog("[ERROR] Pull failed: " + (data.error || ""));
+      if (data.details) appendLog(data.details);
+      return;
+    }
+
+    repoStatus.textContent = "Pulled latest.";
+    if (data.output) appendLog(data.output);
+    await selectRepo();
+  }
+
+  async function deleteRepo(){
+    const repo_id = repoSelect.value;
+    if (!repo_id) return alert("Select a repo first");
+    if (!confirm(`Delete ${repo_id}? This deletes the whole folder.`)) return;
+
+    const r = await fetch(`/delete_repo/${encodeURIComponent(repo_id)}`, { method:"DELETE" });
+    const data = await r.json();
+
+    if (!r.ok){
+      alert(data.error || "Delete failed");
+      return;
+    }
+
+    appendLog("[INFO] Deleted repo " + repo_id);
+    repoFilesGrid.innerHTML = "";
+    repoStatus.textContent = "";
+
+    if (selectedMode === "repo" && selectedRepoId === repo_id){
+      selectedMode = null;
+      selectedRepoId = null;
+      selectedRepoPath = null;
+      selectedLabelEl.textContent = "none";
+      renderInputs([], "py");
+      runBtn.disabled = true;
+      inputHintEl.textContent = "Select something";
+    }
+
+    await loadRepos();
+  }
+
+  // ------------------------
+  // Running
+  // ------------------------
+  async function runSelected(){
+    if (!selectedMode){
+      appendLog("[INFO] Select a script or repo file first.");
+      return;
+    }
+
+    resetUI();
+    statusEl.textContent = "starting...";
+    appendLog(`[INFO] Starting ${selectedLabelEl.textContent}`);
+
+    const input_vars = collectInputVars();
+
+    let url = "";
+    let body = {};
+    if (selectedMode === "script"){
+      url = "/run";
+      body = { script: selectedScript, input_vars };
+    } else {
+      url = "/run_repo";
+      body = { repo_id: selectedRepoId, path: selectedRepoPath, input_vars };
+    }
+
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+
+    const data = await r.json();
+    if (!r.ok){
+      statusEl.textContent = "error";
+      appendLog("[ERROR] " + (data.error || "Failed to start"));
+      if (data.details) appendLog(data.details);
+      return;
+    }
+
+    currentJobId = data.job_id;
+    jobIdEl.textContent = currentJobId;
+    statusEl.textContent = "running";
+
+    ws = new WebSocket(`ws://${location.host}/ws/${currentJobId}`);
+    ws.onmessage = (e) => {
+      const msg = e.data;
+      if (msg.startsWith("LOG ")) {
+        appendLog(msg.slice(4));
+      } else if (msg.startsWith("STATE ")) {
+        const parts = msg.slice(6).split("|");
+        const pct = Number(parts[0]);
+        barEl.value = isNaN(pct) ? 0 : pct;
+        statusEl.textContent = (parts[1] || "").trim();
+        stepEl.textContent = (parts[2] || "").trim();
+      } else {
+        appendLog(msg);
+      }
+    };
+  }
+
+  async function whereLog(){
+    if (!currentJobId){
+      appendLog("[INFO] No job yet.");
+      return;
+    }
+    const r = await fetch(`/download/${currentJobId}`);
+    const data = await r.json();
+    if (!r.ok){
+      appendLog("[ERROR] Could not find log info.");
+      return;
+    }
+    appendLog(`[INFO] Full log saved on Pi: ${data.log_file}`);
+    appendLog(`[TIP] View in browser: /logs/${currentJobId}.log`);
+  }
+
+  // Init
+  loadScripts();
+  loadRepos();
+  renderInputs([], "py");
+  runBtn.disabled = true;
+</script>
+</body>
+</html>
