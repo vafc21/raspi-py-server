@@ -64,40 +64,49 @@ Notes:
 ## Setup (Step by step)
 
 1. Update system packages
-   sudo apt update && sudo apt full-upgrade -y
-
+```
+sudo apt update && sudo apt full-upgrade -y
+```
 2. Install system dependencies
-   sudo apt install -y git python3 python3-venv python3-pip
-
+```
+sudo apt install -y git python3 python3-venv python3-pip
+```
 3. Create the project folder and enter it
-   mkdir -p ~/raspi-py-server
-   cd ~/raspi-py-server
-
+```
+mkdir -p ~/raspi-py-server
+cd ~/raspi-py-server
+```
 4. Add the project files
    Place these files into the folder:
    - server.py
    - dashboard.html
 
 5. Create the required directories
-   mkdir -p scripts repos logs
-
+```
+mkdir -p scripts repos logs
+```
 6. Create and activate a virtual environment
-   python3 -m venv venv
-   source venv/bin/activate
-
+```
+python3 -m venv venv
+source venv/bin/activate
+```
 7. Install Python requirements
-   pip install fastapi "uvicorn[standard]" python-multipart
-
+```
+pip install fastapi "uvicorn[standard]" python-multipart
+```
 8. Start the server
-   uvicorn server:app --host 0.0.0.0 --port 8000
-
+```
+uvicorn server:app --host 0.0.0.0 --port 8000
+```
 9. Open the dashboard
    From the Pi:
-   http://localhost:8000
-
+```
+http://localhost:8000
+```
    From another device on the same LAN:
-   http://<PI-IP>:8000
-
+```
+http://<PI-IP>:8000
+```
 To find your Pi IP address:
    ip a
 
