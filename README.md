@@ -71,16 +71,14 @@ sudo apt update && sudo apt full-upgrade -y
 ```
 sudo apt install -y git python3 python3-venv python3-pip
 ```
-3. Create the project folder and enter it
+3. Create the project folder
 ```
-mkdir -p ~/raspi-py-server
-cd ~/raspi-py-server
+git clone https://github.com/vafc21/raspi-py-server.git
 ```
-4. Add the project files
-   Place these files into the folder:
-   - server.py
-   - dashboard.html
-
+4. Go in the folder
+```
+cd raspi-py-server
+```
 5. Create the required directories
 ```
 mkdir -p scripts repos logs
